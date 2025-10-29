@@ -174,7 +174,7 @@ export default function App() {
       if(APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
         await fetch(APPS_SCRIPT_WEBHOOK, {
           method: "POST",
-          mode: "cors"
+          mode: "cors",
           headers: { "Content-Type":"application/json" },
           body: JSON.stringify({ name, school, className, dept, filename, imageBase64: exported })
         });
