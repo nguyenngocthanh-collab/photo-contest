@@ -1,23 +1,20 @@
 // /api/upload.js
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbxZUGsdPfSq8ieDAkFUzWYSwqkj0ueSdFh7D-5evhvGs8OJUmckc7bqd7dNKJcyIJVQ/exec";
 
   try {
-    const data = req.body;
-
-    // gửi request lên Google Apps Script
-    const response = await fetch("https://script.google.com/macros/s/AKfycbwpYZX3eghohJ67EnbqAtdfqfaPbMnQf7nSVNqgknr6rjR83HiL3REkUkblxRDkKBTs/exec", {
+    const response = await fetch(APPS_SCRIPT_WEBHOOK, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
+      body: JSON.stringify(req.body),
     });
 
-    const text = await response.text();
-    res.status(200).send(text);
+    const data = await response.json().catch(() => ({})); // Apps Script có thể trả text
+    res.status(200).json({ status: "ok", data });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Upload failed", error: err.toString() });
+    res.status(500).json({ status: "error", message: err.toString() });
   }
 }
