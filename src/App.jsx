@@ -171,14 +171,14 @@ export default function App() {
       await fetch(GOOGLE_FORM_ACTION, { method:"POST", body: formBody, mode: "no-cors" });
 
       // 2) POST base64 image + metadata to Apps Script webhook (if set)
-      if(APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
-        await fetch(APPS_SCRIPT_WEBHOOK, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify({ name, school, className, dept, filename, imageBase64: exported })
-        });
-      }
+     if(APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
+  await fetch("/api/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, school, className, dept, filename, imageBase64: exported })
+  });
+}
+
 
       setStep(3);
       window.scrollTo(0,0);
