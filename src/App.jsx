@@ -173,10 +173,10 @@ export default function App() {
       // 2) POST base64 image + metadata to Apps Script webhook (if set)
      if(APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
   await fetch("/api/upload", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, school, className, dept, filename, imageBase64: exported })
-  });
+  method: "POST",
+  headers: { "Content-Type":"application/json" },
+  body: JSON.stringify({ name, school, className, dept, filename, imageBase64: exported })
+});
 }
 
 
