@@ -183,10 +183,10 @@ async function submitAll(e) {
     };
 
     const response = await fetch(APPS_SCRIPT_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload)
+});
 
     const data = await response.json().catch(() => ({}));
     if (data.status !== "ok") throw new Error(data.message || "Upload lỗi");
