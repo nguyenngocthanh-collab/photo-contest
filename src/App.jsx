@@ -16,7 +16,7 @@ const ENTRY_CLASS = "entry.2121292925";
 const ENTRY_DEPT = "entry.544016220";
 
 // Apps Script webhook (sau khi deploy) - nếu để "" thì ảnh không được lưu tự động.
-const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbz_YJzu5cMAmMnHyXsZwSvbUSrizw9SagNpzxMfLA1VVbwxJe-eJ2c2xlvLEm8nRzC2/exec"; // ví dụ: "https://script.google.com/macros/s/AKfycbxxx/exec"
+const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbwl3m-0hbc4WZzLqvoNXRiy_VlEcRcciiBPZt8qfnNAkmwTJcUbCQ1ONnQ3zIJQOdeK/exec"; // ví dụ: "https://script.google.com/macros/s/AKfycbxxx/exec"
 
 // --- END CONFIG ---
 export default function App() {
@@ -164,76 +164,40 @@ async function submitAll(e) {
   if (!exported) return alert("Ảnh chưa xác nhận.");
 
   try {
-    // 1) POST text fields to Google Form (no-cors) — giữ nguyên
+    // 1️⃣ Gửi thông tin người gửi tới Google Form (nếu có)
     const formBody = new URLSearchParams();
     formBody.append(ENTRY_NAME, name);
     formBody.append(ENTRY_SCHOOL, school);
     formBody.append(ENTRY_CLASS, className);
     formBody.append(ENTRY_DEPT, dept);
-    formBody.append("entry.9999999999", filename || "photo.png");
     await fetch(GOOGLE_FORM_ACTION, { method: "POST", body: formBody, mode: "no-cors" });
 
-    // 2) Upload ảnh tới ImgBB (hoặc tương tự)
-    //    LẤY API KEY TỪ https://imgbb.com -> API (miễn phí cho mức nhỏ)
-    const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY"; // <-- thay bằng key của bạn
-    if (!IMGBB_API_KEY || IMGBB_API_KEY.length < 5) {
-      console.warn("IMGBB API key missing — images will not be uploaded to ImgBB.");
-    } else {
-      // ImgBB muốn base64 không kèm prefix data:
-      const base64Only = exported.split(",")[1];
-      const imgbbForm = new FormData();
-      imgbbForm.append("image", base64Only);
-      // bạn có thể set tên hoặc expiration bằng param khác nếu cần
-      const imgbbResp = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-        method: "POST",
-        body: imgbbForm,
-      });
+    // 2️⃣ Gửi ảnh base64 trực tiếp đến Apps Script
+    const payload = {
+      name,
+      school,
+      className,
+      dept,
+      filename: filename || "photo.png",
+      imageBase64: exported
+    };
 
-      const imgbbJson = await imgbbResp.json();
-      if (!imgbbJson || !imgbbJson.data || !imgbbJson.data.url) {
-        console.error("ImgBB upload failed", imgbbJson);
-        // fallback: bạn có thể gửi base64 trực tiếp (không khuyến nghị)
-        alert("Upload ảnh thất bại (ImgBB). Hãy thử lại.");
-        return;
-      }
-      const imageUrl = imgbbJson.data.url;
+    const response = await fetch(APPS_SCRIPT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-      // 3) Gửi metadata nhỏ tới Apps Script Web App (DÙNG URL của bạn)
-      //    Thay APPS_SCRIPT_WEBHOOK trong file bằng URL Apps Script mới (sau deploy)
-      const payload = {
-        name,
-        school,
-        className,
-        dept,
-        filename: filename || "photo.png",
-        imageUrl,
-        formId: "1RmHCYsBzEFltc6AlR8zGDVYfsCKH4CE3IOAK2LmHBkk" // optional
-      };
-
-      // Gọi trực tiếp Apps Script Web App URL (không qua /api/upload)
-      const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbwpYZX3eghohJ67EnbqAtdfqfaPbMnQf7nSVNqgknr6rjR83HiL3REkUkblxRDkKBTs/exec"; // thay bằng URL bạn deploy
-      const gsResp = await fetch(APPS_SCRIPT_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const gsJson = await gsResp.json().catch(() => ({}));
-      console.log("Apps Script response:", gsJson);
-      if (gsJson && gsJson.status === "ok") {
-        // success
-      } else {
-        console.warn("Apps Script returned:", gsJson);
-      }
-    }
+    const data = await response.json().catch(() => ({}));
+    if (data.status !== "ok") throw new Error(data.message || "Upload lỗi");
 
     setStep(3);
     window.scrollTo(0, 0);
   } catch (err) {
     console.error(err);
-    alert("Gửi thất bại, thử lại.");
+    alert("Gửi thất bại: " + err.message);
   }
 }
-
 
   // canvas style sizing for mobile
   function canvasStyle() {
