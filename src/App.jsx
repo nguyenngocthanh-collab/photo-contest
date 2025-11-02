@@ -14,11 +14,9 @@ const ENTRY_NAME = "entry.450327785";
 const ENTRY_SCHOOL = "entry.1715000447";
 const ENTRY_CLASS = "entry.2121292925";
 const ENTRY_DEPT = "entry.544016220";
-
-// Apps Script webhook (sau khi deploy) - nếu để "" thì ảnh không được lưu tự động.
-const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbyDnl2KvpNwTT8W4yVBuq3gzUuPz2Hsjk5cjf8GPuXsWWOLFaZXTDXH5IwGn_oV89Lg/exec"; // ví dụ: "https://script.google.com/macros/s/AKfycbxxx/exec"
-
+const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbyDnl2KvpNwTT8W4yVBuq3gzUuPz2Hsjk5cjf8GPuXsWWOLFaZXTDXH5IwGn_oV89Lg/exec";
 // --- END CONFIG ---
+
 export default function App() {
   const canvasRef = useRef(null);
   const imgRef = useRef(new Image());
@@ -35,7 +33,6 @@ export default function App() {
   const [frameLoaded, setFrameLoaded] = useState(false);
   const [filename, setFilename] = useState("");
 
-  // transform
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({x:0,y:0});
   const dragging = useRef(false);
@@ -43,7 +40,6 @@ export default function App() {
   const CANVAS_SIZE = 1000;
 
   useEffect(() => {
-    // load frame from public/frame.png
     frameRef.current.src = "/frame.png";
     frameRef.current.crossOrigin = "anonymous";
     frameRef.current.onload = () => setFrameLoaded(true);
@@ -69,7 +65,6 @@ export default function App() {
     reader.readAsDataURL(f);
   }
 
-  // pointer events (drag) + wheel zoom
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -91,7 +86,6 @@ export default function App() {
     };
   }, []);
 
-  // pinch zoom for touch
   useEffect(()=> {
     let lastDist=null;
     const canvas = canvasRef.current;
@@ -155,115 +149,38 @@ export default function App() {
     window.scrollTo(0,0);
   }
 
-  // --- Thêm lên đầu file nếu muốn dùng fetch polyfill etc (không cần nếu env OK) ---
-// const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY"; // thay bên dưới
-
-async function submitAll(e) {
-  e.preventDefault();
-  const exported = window._exportedImage;
-  if (!exported) return alert("Ảnh chưa xác nhận.");
-
-  try {
-    // 1️⃣ Gửi thông tin người gửi tới Google Form (nếu có)
-    const formBody = new URLSearchParams();
-    formBody.append(ENTRY_NAME, name);
-    formBody.append(ENTRY_SCHOOL, school);
-    formBody.append(ENTRY_CLASS, className);
-    formBody.append(ENTRY_DEPT, dept);
-    await fetch(GOOGLE_FORM_ACTION, { method: "POST", body: formBody, mode: "no-cors" });
-
-    // 2️⃣ Gửi ảnh base64 trực tiếp đến Apps Script
-    const payload = {
-      name,
-      school,
-      className,
-      dept,
-      filename: filename || "photo.png",
-      imageBase64: exported
-    };
-
-    const response = await fetch(APPS_SCRIPT_WEBHOOK, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload)
-});
-
-    const data = await response.json().catch(() => ({}));
-    if (data.status !== "ok") throw new Error(data.message || "Upload lỗi");
-
-    setStep(3);
-    window.scrollTo(0, 0);
-  } catch (err) {
-    console.error(err);
-    alert("Gửi thất bại: " + err.message);
-  }
-}
-
-  // canvas style sizing for mobile
-  function canvasStyle() {
-    const fullWidth = Math.min(window.innerWidth - 32, 520);
-    return { width: fullWidth + "px", height: fullWidth + "px" };
+  // --- Retry helper ---
+  async function postWithRetry(url, payload, retries=3, delay=500){
+    for(let i=0;i<retries;i++){
+      try {
+        const res = await fetch(url, {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(payload)
+        });
+        const data = await res.json().catch(()=>({}));
+        if(data.status==="ok") return data;
+        throw new Error(data.message || "Upload lỗi");
+      } catch(err) {
+        if(i===retries-1) throw err;
+        await new Promise(r=>setTimeout(r, delay));
+      }
+    }
   }
 
-  return (
-    <div className="container">
-      <div className="card">
-        <h3 className="title">🎉 Sinh nhật đội — Gửi ảnh chúc mừng</h3>
-        <p className="sub">Upload ảnh → điều chỉnh sao cho vừa khung → xác nhận → điền thông tin → gửi</p>
+  async function submitAll(e){
+    e.preventDefault();
+    const exported = window._exportedImage;
+    if(!exported) return alert("Ảnh chưa xác nhận.");
 
-        {step === 1 && (
-          <>
-            <div style={{marginBottom:10}}>
-              <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} />
-              <button className="button" onClick={()=> fileRef.current && fileRef.current.click()}>Chọn ảnh / Chụp</button>
-            </div>
+    try{
+      // 1️⃣ Google Form
+      const formBody = new URLSearchParams();
+      formBody.append(ENTRY_NAME, name);
+      formBody.append(ENTRY_SCHOOL, school);
+      formBody.append(ENTRY_CLASS, className);
+      formBody.append(ENTRY_DEPT, dept);
+      await fetch(GOOGLE_FORM_ACTION,{method:"POST", body:formBody, mode:"no-cors"});
 
-            <div className="canvas-wrap" style={{padding:12}}>
-              <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} style={canvasStyle()} />
-            </div>
-
-            <div className="row" style={{marginTop:10}}>
-              <button className="btn-plain" onClick={()=> setScale(s => Math.min(5, s+0.1))}>Zoom +</button>
-              <button className="btn-plain" onClick={()=> setScale(s => Math.max(0.3, s-0.1))}>Zoom −</button>
-              <button className="button" style={{flex:1}} onClick={confirmImage}>Xác nhận</button>
-            </div>
-            <div className="small">Kéo ảnh bằng tay, chụp từ camera hoặc chọn từ thư viện.</div>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <h4 style={{marginTop:12}}>Thông tin thí sinh</h4>
-            <form onSubmit={submitAll}>
-              <label className="label">Họ và tên</label>
-              <input className="input" value={name} onChange={e=>setName(e.target.value)} required />
-
-              <label className="label">Trường</label>
-              <input className="input" value={school} onChange={e=>setSchool(e.target.value)} required />
-
-              <label className="label">Lớp</label>
-              <input className="input" value={className} onChange={e=>setClassName(e.target.value)} />
-
-              <label className="label">Khoa / Bộ môn</label>
-              <input className="input" value={dept} onChange={e=>setDept(e.target.value)} />
-
-              <div style={{display:"flex",gap:8, marginTop:8}}>
-                <button type="button" className="btn-plain" onClick={()=> setStep(1)}>Quay lại chỉnh ảnh</button>
-                <button type="submit" className="button" style={{flex:1}}>Gửi</button>
-              </div>
-            </form>
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <h4 style={{marginTop:12}}>🎉 Cảm ơn bạn đã tham gia!</h4>
-            <p className="small">Ảnh và thông tin của bạn đã được ghi nhận. Kết quả sẽ sớm được công bố.</p>
-          </>
-        )}
-
-        <div className="footer">© Ban tổ chức — Vui lòng chỉ gửi ảnh bạn có quyền sử dụng</div>
-      </div>
-    </div>
-  );
-}
+      // 2️⃣ Apps Script webhook với retry
+      const payload =
