@@ -155,49 +155,85 @@ export default function App() {
     window.scrollTo(0,0);
   }
 
-  async function submitAll(e) {
-    e.preventDefault();
-    const exported = window._exportedImage;
-    if(!exported) return alert("Ảnh chưa xác nhận.");
-    try {
-      // 1) POST text fields to Google Form (no-cors)
-      const formBody = new URLSearchParams();
-      formBody.append(ENTRY_NAME, name);
-      formBody.append(ENTRY_SCHOOL, school);
-      formBody.append(ENTRY_CLASS, className);
-      formBody.append(ENTRY_DEPT, dept);
-      // include a note with filename optionally
-      formBody.append("entry.9999999999", filename || "photo.png"); // optional extra field if you created
-      await fetch(GOOGLE_FORM_ACTION, { method:"POST", body: formBody, mode: "no-cors" });
+  // --- Thêm lên đầu file nếu muốn dùng fetch polyfill etc (không cần nếu env OK) ---
+// const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY"; // thay bên dưới
 
-      // 2) POST base64 image + metadata to Apps Script webhook (if set)
-     if (APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
-  // 1️⃣ Upload ảnh tạm sang ImgBB (miễn phí)
-  const formData = new FormData();
-  formData.append("image", exported.split(",")[1]); // lấy phần base64
-  const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=YOUR_IMGBB_API_KEY", {
-    method: "POST",
-    body: formData,
-  });
-  const uploadJson = await uploadRes.json();
-  const imageUrl = uploadJson.data?.url;
+async function submitAll(e) {
+  e.preventDefault();
+  const exported = window._exportedImage;
+  if (!exported) return alert("Ảnh chưa xác nhận.");
 
-  // 2️⃣ Gửi metadata + URL ảnh tới Apps Script
-  await fetch("/api/upload", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, school, className, dept, filename, imageUrl }),
-  });
+  try {
+    // 1) POST text fields to Google Form (no-cors) — giữ nguyên
+    const formBody = new URLSearchParams();
+    formBody.append(ENTRY_NAME, name);
+    formBody.append(ENTRY_SCHOOL, school);
+    formBody.append(ENTRY_CLASS, className);
+    formBody.append(ENTRY_DEPT, dept);
+    formBody.append("entry.9999999999", filename || "photo.png");
+    await fetch(GOOGLE_FORM_ACTION, { method: "POST", body: formBody, mode: "no-cors" });
+
+    // 2) Upload ảnh tới ImgBB (hoặc tương tự)
+    //    LẤY API KEY TỪ https://imgbb.com -> API (miễn phí cho mức nhỏ)
+    const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY"; // <-- thay bằng key của bạn
+    if (!IMGBB_API_KEY || IMGBB_API_KEY.length < 5) {
+      console.warn("IMGBB API key missing — images will not be uploaded to ImgBB.");
+    } else {
+      // ImgBB muốn base64 không kèm prefix data:
+      const base64Only = exported.split(",")[1];
+      const imgbbForm = new FormData();
+      imgbbForm.append("image", base64Only);
+      // bạn có thể set tên hoặc expiration bằng param khác nếu cần
+      const imgbbResp = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: "POST",
+        body: imgbbForm,
+      });
+
+      const imgbbJson = await imgbbResp.json();
+      if (!imgbbJson || !imgbbJson.data || !imgbbJson.data.url) {
+        console.error("ImgBB upload failed", imgbbJson);
+        // fallback: bạn có thể gửi base64 trực tiếp (không khuyến nghị)
+        alert("Upload ảnh thất bại (ImgBB). Hãy thử lại.");
+        return;
+      }
+      const imageUrl = imgbbJson.data.url;
+
+      // 3) Gửi metadata nhỏ tới Apps Script Web App (DÙNG URL của bạn)
+      //    Thay APPS_SCRIPT_WEBHOOK trong file bằng URL Apps Script mới (sau deploy)
+      const payload = {
+        name,
+        school,
+        className,
+        dept,
+        filename: filename || "photo.png",
+        imageUrl,
+        formId: "1RmHCYsBzEFltc6AlR8zGDVYfsCKH4CE3IOAK2LmHBkk" // optional
+      };
+
+      // Gọi trực tiếp Apps Script Web App URL (không qua /api/upload)
+      const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbwpYZX3eghohJ67EnbqAtdfqfaPbMnQf7nSVNqgknr6rjR83HiL3REkUkblxRDkKBTs/exec"; // thay bằng URL bạn deploy
+      const gsResp = await fetch(APPS_SCRIPT_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const gsJson = await gsResp.json().catch(() => ({}));
+      console.log("Apps Script response:", gsJson);
+      if (gsJson && gsJson.status === "ok") {
+        // success
+      } else {
+        console.warn("Apps Script returned:", gsJson);
+      }
+    }
+
+    setStep(3);
+    window.scrollTo(0, 0);
+  } catch (err) {
+    console.error(err);
+    alert("Gửi thất bại, thử lại.");
+  }
 }
 
-
-      setStep(3);
-      window.scrollTo(0,0);
-    } catch(err) {
-      console.error(err);
-      alert("Gửi thất bại, thử lại.");
-    }
-  }
 
   // canvas style sizing for mobile
   function canvasStyle() {
