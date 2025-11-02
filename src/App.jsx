@@ -14,7 +14,7 @@ const ENTRY_NAME = "entry.450327785";
 const ENTRY_SCHOOL = "entry.1715000447";
 const ENTRY_CLASS = "entry.2121292925";
 const ENTRY_DEPT = "entry.544016220";
-const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbxFYmWql2TtrZX3mv0W05zAA7LDCDq9ieRZGfzxyt-NroJye7Bfa2z4igK16Hy0expN/exec";
+const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbxnCKXvSwkM09OgSa8xcje38JNbRHVsOuvekohn3brNLcCM8_I68PDk91iBQnjGrUHB/exec";
 // --- END CONFIG ---
 
 export default function App() {
