@@ -16,7 +16,7 @@ const ENTRY_CLASS = "entry.2121292925";
 const ENTRY_DEPT = "entry.544016220";
 
 // Apps Script webhook (sau khi deploy) - nếu để "" thì ảnh không được lưu tự động.
-const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbwpYZX3eghohJ67EnbqAtdfqfaPbMnQf7nSVNqgknr6rjR83HiL3REkUkblxRDkKBTs/exec"; // ví dụ: "https://script.google.com/macros/s/AKfycbxxx/exec"
+const APPS_SCRIPT_WEBHOOK = "https://script.google.com/macros/s/AKfycbzjYNCmkYVbFKvunF4xSXb51BxLq2TWubZGzcySq2vlM2x4wCTByrvjT1WW0h4rEsCP/exec"; // ví dụ: "https://script.google.com/macros/s/AKfycbxxx/exec"
 
 // --- END CONFIG ---
 export default function App() {
