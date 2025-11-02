@@ -171,12 +171,23 @@ export default function App() {
       await fetch(GOOGLE_FORM_ACTION, { method:"POST", body: formBody, mode: "no-cors" });
 
       // 2) POST base64 image + metadata to Apps Script webhook (if set)
-     if(APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
+     if (APPS_SCRIPT_WEBHOOK && APPS_SCRIPT_WEBHOOK.length > 10) {
+  // 1️⃣ Upload ảnh tạm sang ImgBB (miễn phí)
+  const formData = new FormData();
+  formData.append("image", exported.split(",")[1]); // lấy phần base64
+  const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=YOUR_IMGBB_API_KEY", {
+    method: "POST",
+    body: formData,
+  });
+  const uploadJson = await uploadRes.json();
+  const imageUrl = uploadJson.data?.url;
+
+  // 2️⃣ Gửi metadata + URL ảnh tới Apps Script
   await fetch("/api/upload", {
-  method: "POST",
-  headers: { "Content-Type":"application/json" },
-  body: JSON.stringify({ name, school, className, dept, filename, imageBase64: exported })
-});
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, school, className, dept, filename, imageUrl }),
+  });
 }
 
 
