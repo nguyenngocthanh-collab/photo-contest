@@ -1,9 +1,9 @@
-name: Deploy to GitHub Pages
+name: Deploy React + Vite to GitHub Pages
 
 on:
   push:
     branches:
-      - main  # khi bạn push vào main
+      - main  # workflow chạy khi push vào main
 
 jobs:
   build-deploy:
